@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قائمة طعام فندق ماريوت - هوتسبوت</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Marhey:wght@300..700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="hotspot-container">
+        <header class="hotspot-header">
+            <img src="images/mar.jpg" alt="شعار فندق ماريوت" class="logo">
+            <!-- ملاحظة: استبدل marriott-logo.png بشعار فندق ماريوت الفعلي -->
+            <h1 id="hotel-title"></h1>
+            <p id="welcome-text" class="welcome-message"></p>
+            <!-- <div class="wifi-connect">
+                <p>للاتصال بالإنترنت، الرجاء الضغط على الزر أدناه:</p>
+                <button class="connect-button">الاتصال بشبكة Wi-Fi</button>
+            </div> -->
+        </header>
+
+        <nav class="category-tabs">
+            <!-- سيتم ملء الأقسام هنا بواسطة JavaScript -->
+        </nav>
+
+        <main class="menu-section">
+            <div id="menu-items-grid" class="menu-items-grid">
+                <!-- سيتم ملء أصناف الطعام هنا بواسطة JavaScript -->
+            </div>
+        </main>
+
+        <footer class="hotspot-footer">
+            <p>&copy; <span id="current-year"></span> <span id="footer-hotel-name"></span>. جميع الحقوق محفوظة.</p>
+        </footer>
+    </div>
+
+    <div class="modal" id="item-modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <img id="modal-img" src="" alt="صورة الصنف">
+            <h3 id="modal-name"></h3>
+            <p id="modal-description"></p>
+            <p class="modal-price" id="modal-price"></p>
+        </div>
+    </div>
+
+    <script src="menu-data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
