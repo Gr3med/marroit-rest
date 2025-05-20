@@ -1,21 +1,20 @@
-// script.js - نسخة مُحسّنة للسلاسة والاحترافية
+// script.js - نسخة مدمجة "سوبر خرافية"
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM fully loaded and parsed.");
 
-    if (typeof menuCategories === 'undefined') {
-        console.error("CRITICAL ERROR: menuCategories variable is undefined.");
-        // ... (الكود الخاص بالخطأ الفادح كما هو) ...
-        const menuGrid = document.getElementById('menu-items-grid');
-        if (menuGrid) {
-            menuGrid.innerHTML = "<p style='text-align:center; color: red; font-size: 1.2em; padding: 20px;'>CRITICAL ERROR: Menu data failed to load. Please contact system administrator.</p>";
+    // التحقق من وجود البيانات الأساسية
+    if (typeof menuCategories === 'undefined' || typeof hotelName === 'undefined' || typeof welcomeMessage === 'undefined') {
+        console.error("CRITICAL ERROR: Essential data (menuCategories, hotelName, or welcomeMessage) is undefined.");
+        const bodyContent = document.body;
+        if (bodyContent) {
+            bodyContent.innerHTML = "<p style='text-align:center; color: red; font-size: 1.5em; padding: 50px; font-family: Arial, sans-serif;'>خطأ حرج: فشل تحميل بيانات القائمة الأساسية. يرجى مراجعة مسؤول النظام والتأكد من أن ملف menu-data.js موجود ومُعرَّف بشكل صحيح.</p>";
         }
-        const tabsContainer = document.querySelector('.category-tabs');
-        if (tabsContainer) tabsContainer.innerHTML = "";
-        return;
-    } else {
-        console.log("menuCategories loaded successfully. Content:", JSON.parse(JSON.stringify(menuCategories)));
+        return; // إيقاف التنفيذ
     }
+    console.log("menuCategories loaded. Content:", JSON.parse(JSON.stringify(menuCategories)));
 
+    // --- العناصر الأساسية ---
+    const bodyElement = document.body;
     const categoryTabsContainer = document.querySelector('.category-tabs');
     const menuItemsGrid = document.getElementById('menu-items-grid');
     const hotelTitleElement = document.getElementById('hotel-title');
@@ -23,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const footerHotelNameElement = document.getElementById('footer-hotel-name');
     const currentYearElement = document.getElementById('current-year');
 
+    // --- عناصر النافذة المنبثقة ---
     const modal = document.getElementById('item-modal');
     const modalImg = document.getElementById('modal-img');
     const modalName = document.getElementById('modal-name');
@@ -30,19 +30,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalPrice = document.getElementById('modal-price');
     const closeModalButton = document.querySelector('.modal .close-button');
 
-    // --- تحديث الجزء الخاص بمعلومات الفندق ---
-    if (hotelTitleElement) hotelTitleElement.textContent = `قائمة طعام ${hotelName || 'الفندق'}`;
-    if (footerHotelNameElement) footerHotelNameElement.textContent = hotelName || 'الفندق';
-    if (welcomeTextElement) welcomeTextElement.textContent = welcomeMessage || 'مرحباً بك!';
+    // --- متغيرات لتتبع حالة النافذة المنبثقة والتنقل ---
+    let currentItemIndexInModal = 0;
+    let itemsInCurrentCategoryForModal = [];
+
+    // --- إعداد معلومات الفندق الديناميكية ---
+    if (hotelTitleElement) hotelTitleElement.textContent = `قائمة طعام ${hotelName}`;
+    if (footerHotelNameElement) footerHotelNameElement.textContent = hotelName;
+    if (welcomeTextElement) welcomeTextElement.textContent = welcomeMessage;
     if (currentYearElement) currentYearElement.textContent = new Date().getFullYear();
-    // --- نهاية تحديث معلومات الفندق ---
 
-    let categories = Object.keys(menuCategories || {});
-    console.log("Category keys extracted:", categories);
+    const categories = Object.keys(menuCategories);
+    console.log("Category keys:", categories);
 
+    // --- ميزة تبديل السمة (الوضع الليلي/النهاري) ---
+    const themeSwitcher = document.createElement('button');
+    themeSwitcher.classList.add('theme-switcher');
+    themeSwitcher.setAttribute('aria-label', 'تبديل السمة');
+    themeSwitcher.title = 'تبديل الوضع الليلي/النهاري';
+    
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            bodyElement.classList.add('dark-mode');
+            themeSwitcher.innerHTML = '☀️';
+        } else {
+            bodyElement.classList.remove('dark-mode');
+            themeSwitcher.innerHTML = '🌙';
+        }
+    }
+
+    const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(savedTheme);
+    bodyElement.appendChild(themeSwitcher);
+
+    themeSwitcher.addEventListener('click', () => {
+        const newTheme = bodyElement.classList.contains('dark-mode') ? 'light' : 'dark';
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    });
+
+    // --- عرض الأقسام ---
     function displayCategories() {
-        console.log("--- displayCategories function called ---");
-        if (!categoryTabsContainer) { console.error("categoryTabsContainer is null!"); return; }
+        if (!categoryTabsContainer) { console.error("Category tabs container not found!"); return; }
         categoryTabsContainer.innerHTML = '';
         if (categories.length === 0) { console.warn("No categories to display."); return; }
 
@@ -53,163 +82,207 @@ document.addEventListener('DOMContentLoaded', () => {
             button.dataset.category = category;
             categoryTabsContainer.appendChild(button);
         });
-        console.log("--- Finished displayCategories ---");
     }
 
+    // --- عرض أصناف الطعام ---
     function displayMenuItems(category) {
-        console.log(`----- displayMenuItems called for category: "${category}" -----`);
-        if (!menuItemsGrid) { console.error("menuItemsGrid is null!"); return; }
-        
-        // إخفاء الكروت القديمة بحركة قبل عرض الجديدة
-        Array.from(menuItemsGrid.children).forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px) scale(0.95)';
+        if (!menuItemsGrid) { console.error("Menu items grid not found!"); return; }
+
+        // حركة إخفاء للكروت القديمة
+        Array.from(menuItemsGrid.children).forEach((card, index) => {
+            setTimeout(() => { // تأخير متتالي للإخفاء
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px) scale(0.9)';
+            }, index * 50);
         });
 
-        // تأخير بسيط لمسك الحركة قبل مسح المحتوى
-        setTimeout(() => {
-            menuItemsGrid.innerHTML = ''; // مسح الكروت القديمة
-
-            if (!menuCategories || typeof menuCategories[category] === 'undefined') {
-                console.error(`Category "${category}" does not exist or menuCategories is undefined.`);
-                menuItemsGrid.innerHTML = `<p style='text-align:center; padding-top: 30px; font-size: 1.1em;'>خطأ: القسم "${category}" غير موجود.</p>`;
-                return;
-            }
-
+        setTimeout(() => { // انتظار انتهاء حركة الإخفاء
+            menuItemsGrid.innerHTML = '';
             const items = menuCategories[category];
-            console.log(`Items for "${category}":`, JSON.parse(JSON.stringify(items)));
 
             if (!items || items.length === 0) {
-                console.warn(`No items or empty array for category: "${category}"`);
-                menuItemsGrid.innerHTML = `<p style='text-align:center; padding-top: 30px; font-size: 1.1em;'>لا توجد أصناف في هذا القسم حالياً.</p>`;
+                menuItemsGrid.innerHTML = `<p class="no-items-message">لا توجد أصناف في هذا القسم حالياً.</p>`;
                 return;
             }
 
             items.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.classList.add('menu-item-card');
-                card.dataset.itemId = item.id;
-                card.dataset.category = category;
-
                 card.innerHTML = `
-                    <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='images/placeholder.png'; console.error('Failed to load image: ${item.image} for ${item.name}');">
+                    <img src="${item.image}" alt="${item.name}" loading="lazy" width="290" height="220" 
+                         onerror="this.onerror=null; this.src='images/placeholder.png'; console.error('Image load error: ${item.image} for ${item.name}');">
                     <div class="item-info">
                         <h3>${item.name}</h3>
                         <p class="description">${item.description || ''}</p>
                         <p class="price">${item.price}</p>
                     </div>
                 `;
-                if (modal) {
-                    card.addEventListener('click', () => openItemModal(item));
-                }
+                card.addEventListener('click', () => {
+                    itemsInCurrentCategoryForModal = items;
+                    currentItemIndexInModal = index;
+                    openItemModal(item);
+                });
                 menuItemsGrid.appendChild(card);
 
-                // تطبيق حركة ظهور متتالية للكروت الجديدة
+                // حركة ظهور متتالية للكروت الجديدة
                 setTimeout(() => {
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0) scale(1)';
-                }, (index * 100) + 50); // 100ms delay per card, plus initial 50ms
+                }, (index * 80) + 50); // تأخير متزايد لكل كرت
             });
-            console.log(`----- Finished displayMenuItems for "${category}" -----`);
-        }, 300); // يجب أن يكون هذا الوقت كافيًا لانتهاء حركة إخفاء الكروت القديمة
+        }, 300 + (menuItemsGrid.children.length * 50)); // وقت الإخفاء الكلي + قليل من الانتظار
     }
-
-    function openItemModal(itemData) {
-        if (!modal || !modalImg || !modalName || !modalDescription || !modalPrice) {
-            console.error("Modal elements not found.");
-            return;
-        }
+    
+    // --- وظائف النافذة المنبثقة (Modal) ---
+    function updateModalContent(itemData) {
         modalImg.src = itemData.image;
-        modalImg.onerror = () => { modalImg.src = 'images/placeholder.png'; };
         modalImg.alt = itemData.name;
         modalName.textContent = itemData.name;
         modalDescription.textContent = itemData.description || "لا يوجد وصف متوفر.";
         modalPrice.textContent = itemData.price;
+        updateModalNavigationState();
+    }
 
-        modal.style.display = 'flex'; // استخدام flex لتوسيط المحتوى إذا أردت لاحقًا
-        // تأخير طفيف قبل إضافة كلاس visible للسماح بـ display:flex بالعمل أولاً
-        setTimeout(() => {
-            modal.classList.add('visible');
-        }, 10); 
-        
-        if (document.body) document.body.style.overflow = 'hidden'; // منع تمرير الصفحة الخلفية
+    function openItemModal(itemData) {
+        if (!modal) { console.error("Modal element not found."); return; }
+        updateModalContent(itemData);
+        addModalNavigationButtons(); // التأكد من وجود أزرار التنقل
+
+        modal.style.display = 'flex';
+        bodyElement.style.overflow = 'hidden';
+        setTimeout(() => modal.classList.add('visible'), 10); // تفعيل حركة CSS
     }
 
     function closeModal() {
         if (!modal) return;
-        modal.classList.remove('visible'); // ابدأ حركة الإخفاء
-        // انتظر انتهاء حركة CSS قبل إخفاء العنصر بالكامل
+        modal.classList.remove('visible');
         setTimeout(() => {
             modal.style.display = 'none';
-            if (document.body) document.body.style.overflow = 'auto'; // استعادة تمرير الصفحة
-        }, 400); // يجب أن يكون هذا الوقت مساويًا أو أطول قليلاً من مدة انتقال النافذة في CSS
+            bodyElement.style.overflow = 'auto';
+        }, parseFloat(getComputedStyle(modal).transitionDuration) * 1000 || 400);
     }
 
+    function addModalNavigationButtons() {
+        if (document.querySelector('.modal-prev')) return; // الأزرار موجودة بالفعل
+
+        const prevButton = document.createElement('button');
+        prevButton.className = 'modal-navigation modal-prev';
+        prevButton.innerHTML = '❮';
+        prevButton.title = 'الصنف السابق';
+        prevButton.setAttribute('aria-label', 'الصنف السابق');
+        prevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModal(-1); });
+
+        const nextButton = document.createElement('button');
+        nextButton.className = 'modal-navigation modal-next';
+        nextButton.innerHTML = '❯';
+        nextButton.title = 'الصنف التالي';
+        nextButton.setAttribute('aria-label', 'الصنف التالي');
+        nextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModal(1); });
+        
+        // يفضل إضافة الأزرار إلى modal-content لتبقى داخله دائماً
+        const modalContentElement = modal.querySelector('.modal-content');
+        if (modalContentElement) {
+            modalContentElement.appendChild(prevButton);
+            modalContentElement.appendChild(nextButton);
+        } else { // كحل احتياطي إذا لم يتم إيجاد modal-content
+            modal.appendChild(prevButton);
+            modal.appendChild(nextButton);
+        }
+    }
+
+    function navigateModal(direction) {
+        currentItemIndexInModal += direction;
+        // لا حاجة للتحقق من الحدود هنا إذا كان updateModalNavigationState يعطل الأزرار
+        
+        const newItem = itemsInCurrentCategoryForModal[currentItemIndexInModal];
+        const modalContent = modal.querySelector('.modal-content');
+
+        if (modalContent) {
+            modalContent.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out'; // حركة خروج سريعة
+            modalContent.style.opacity = '0';
+            modalContent.style.transform = `translateX(${direction * -30}px) scale(0.98)`;
+
+            setTimeout(() => {
+                updateModalContent(newItem);
+                modalContent.style.opacity = '0'; // إعادة التعيين قبل حركة الدخول
+                modalContent.style.transform = `translateX(${direction * 30}px) scale(0.98)`; // من الجهة المقابلة
+                setTimeout(() => { // حركة دخول
+                    modalContent.style.opacity = '1';
+                    modalContent.style.transform = 'translateX(0) scale(1)';
+                }, 20);
+            }, 200); // مدة حركة الخروج
+        } else { // إذا لم يكن هناك تأثير انتقال
+            updateModalContent(newItem);
+        }
+    }
+    
+    function updateModalNavigationState() {
+        const prevBtn = modal.querySelector('.modal-prev');
+        const nextBtn = modal.querySelector('.modal-next');
+        if (!prevBtn || !nextBtn) return;
+
+        const canGoPrev = currentItemIndexInModal > 0;
+        const canGoNext = currentItemIndexInModal < itemsInCurrentCategoryForModal.length - 1;
+
+        prevBtn.disabled = !canGoPrev;
+        nextBtn.disabled = !canGoNext;
+
+        if (itemsInCurrentCategoryForModal.length <= 1) {
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        } else {
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+        }
+    }
+
+    // --- إرفاق Event Listeners ---
     if (closeModalButton) {
         closeModalButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // منع انتشار الحدث إذا كان الزر داخل Modal Content
+            e.stopPropagation();
             closeModal();
         });
     }
 
     if (modal) {
-        // إغلاق النافذة عند الضغط على الخلفية (خارج المحتوى)
         modal.addEventListener('click', (event) => {
-            if (event.target === modal) { // مهم: التحقق أن الضغطة كانت على الخلفية مباشرة
-                closeModal();
-            }
+            if (event.target === modal) closeModal();
         });
-        // إغلاق النافذة بمفتاح Escape
         window.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && modal.classList.contains('visible')) {
-                closeModal();
-            }
+            if (event.key === 'Escape' && modal.classList.contains('visible')) closeModal();
         });
     }
 
     if (categoryTabsContainer) {
         categoryTabsContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('tab-button') && !e.target.classList.contains('active')) {
-                const selectedCategory = e.target.dataset.category;
-                console.log(`Tab clicked. Selected category: "${selectedCategory}"`);
-                
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                
-                displayMenuItems(selectedCategory);
+            const button = e.target.closest('.tab-button');
+            if (button && !button.classList.contains('active')) {
+                document.querySelectorAll('.tab-button.active').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                displayMenuItems(button.dataset.category);
             }
         });
-    } else {
-        console.error("categoryTabsContainer is null.");
     }
 
-    // --- الإعداد الأولي ---
-    console.log("--- Initial Setup Starting ---");
+    // --- الإعداد الأولي عند تحميل الصفحة ---
     if (categories.length > 0) {
         displayCategories();
         const firstTabButton = categoryTabsContainer ? categoryTabsContainer.querySelector('.tab-button') : null;
         if (firstTabButton) {
             firstTabButton.classList.add('active');
-            console.log(`Activating first tab: "${categories[0]}"`);
             displayMenuItems(categories[0]);
-        } else {
-            console.warn("No tab buttons or categoryTabsContainer is null.");
-            if (categories.length > 0 && menuItemsGrid) {
-                 displayMenuItems(categories[0]);
-            }
+        } else if (menuItemsGrid) { // إذا لم توجد أزرار ولكن هناك أقسام
+            displayMenuItems(categories[0]);
         }
-    } else {
-        console.error("No categories found. Cannot proceed.");
-        if (menuItemsGrid) menuItemsGrid.innerHTML = "<p style='text-align:center; color: orange;'>No categories found in the menu.</p>";
+    } else if (menuItemsGrid) {
+        menuItemsGrid.innerHTML = "<p class='no-items-message'>لا توجد أقسام أو أصناف لعرضها في القائمة حالياً.</p>";
     }
-    console.log("--- Initial Setup Finished ---");
-    // --- نهاية الإعداد الأولي ---
 
-    // زر الاتصال (مُعلق في HTML حاليًا)
+    // ملاحظة: زر الاتصال بالواي فاي معلق في HTML، إذا تم تفعيله، هذا الكود سيعمل
     const connectBtn = document.querySelector('.connect-button');
     if(connectBtn) {
         connectBtn.addEventListener('click', () => {
-            alert('جاري محاولة الاتصال بالشبكة...\n(This is a demo message, actual connection is handled by the hotspot system)');
+            alert('جاري محاولة الاتصال بالشبكة...\n(This is a demo message)');
         });
     }
 });
